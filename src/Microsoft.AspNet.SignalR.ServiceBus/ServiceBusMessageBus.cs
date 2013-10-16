@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.SignalR.Messaging;
 using Microsoft.AspNet.SignalR.Tracing;
 using Microsoft.ServiceBus.Messaging;
+using System.Threading;
 
 namespace Microsoft.AspNet.SignalR.ServiceBus
 {
@@ -19,7 +20,8 @@ namespace Microsoft.AspNet.SignalR.ServiceBus
     {
         private const string SignalRTopicPrefix = "SIGNALR_TOPIC";
 
-        private readonly ServiceBusConnectionContext _connectionContext;
+        private ServiceBusConnectionContext _connectionContext;
+
         private readonly ServiceBusConnection _connection;
         private readonly string[] _topics;
         
@@ -41,7 +43,7 @@ namespace Microsoft.AspNet.SignalR.ServiceBus
                                 .Select(topicIndex => SignalRTopicPrefix + "_" + configuration.TopicPrefix + "_" + topicIndex)
                                 .ToArray();
 
-            _connectionContext = _connection.Subscribe(_topics, OnMessage, OnError, Open);
+            ThreadPool.QueueUserWorkItem(Subscribe);
         }
 
         protected override int StreamCount
@@ -76,6 +78,11 @@ namespace Microsoft.AspNet.SignalR.ServiceBus
                     OnReceived(topicIndex, (ulong)message.EnqueuedSequenceNumber, scaleoutMessage);
                 }
             }
+        }
+
+        private void Subscribe(object state)
+        {
+            _connectionContext = _connection.Subscribe(_topics, OnMessage, OnError, Open);
         }
 
         protected override void Dispose(bool disposing)
