@@ -61,6 +61,7 @@ namespace Microsoft.AspNet.SignalR.Tests
                     Assert.True(await pollEvent.WaitAsync(TimeSpan.FromSeconds(15)), "Timed out waiting for poll request");
 
                     host.Restart();
+                    host.Initialize(connection);
 
                     Assert.True(await reconnectedEvent.WaitAsync(TimeSpan.FromSeconds(15)), "Timed out waiting for client side reconnect");
 
@@ -80,7 +81,7 @@ namespace Microsoft.AspNet.SignalR.Tests
 
             public void Initialize(SignalR.Client.IConnection connection)
             {
-                // Not implemented by MemoryHost
+                _server.Initialize(connection);
             }
 
             public ServerRestarter(Action<IAppBuilder> startup)

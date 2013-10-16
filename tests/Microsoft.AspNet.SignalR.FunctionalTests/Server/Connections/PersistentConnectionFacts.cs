@@ -39,20 +39,27 @@ namespace Microsoft.AspNet.SignalR.Tests
                         config.Resolver.Register(typeof(IProtectedData), () => new EmptyProtectedData());
                     });
 
-                    string id = Guid.NewGuid().ToString("d");
+                    var connection = new Client.Connection("http://foo/echo");
 
-                    var tasks = new List<Task>();
-
-                    for (int i = 0; i < 1000; i++)
+                    using (connection)
                     {
-                        tasks.Add(ProcessRequest(host, "serverSentEvents", id));
+                        connection.Start(host).Wait();
+
+                        string id = Guid.NewGuid().ToString("d");
+
+                        var tasks = new List<Task>();
+
+                        for (int i = 0; i < 1000; i++)
+                        {
+                            tasks.Add(ProcessRequest(host, "serverSentEvents", id));
+                        }
+
+                        ProcessRequest(host, "serverSentEvents", id);
+
+                        Task.WaitAll(tasks.ToArray());
+
+                        Assert.True(tasks.All(t => !t.IsFaulted));
                     }
-
-                    ProcessRequest(host, "serverSentEvents", id);
-
-                    Task.WaitAll(tasks.ToArray());
-
-                    Assert.True(tasks.All(t => !t.IsFaulted));
                 }
             }
 
@@ -73,26 +80,33 @@ namespace Microsoft.AspNet.SignalR.Tests
                         config.Resolver.Register(typeof(IProtectedData), () => new EmptyProtectedData());
                     });
 
-                    string id = Guid.NewGuid().ToString("d");
+                    var connection = new Client.Connection("http://foo/echo");
 
-                    var tasks = new List<Task>();
-
-                    for (int i = 0; i < 1000; i++)
+                    using (connection)
                     {
-                        tasks.Add(ProcessRequest(host, "longPolling", id));
+                        connection.Start(host).Wait();
+
+                        string id = Guid.NewGuid().ToString("d");
+
+                        var tasks = new List<Task>();
+
+                        for (int i = 0; i < 1000; i++)
+                        {
+                            tasks.Add(ProcessRequest(host, "longPolling", id));
+                        }
+
+                        ProcessRequest(host, "longPolling", id);
+
+                        Task.WaitAll(tasks.ToArray());
+
+                        Assert.True(tasks.All(t => !t.IsFaulted));
                     }
-
-                    ProcessRequest(host, "longPolling", id);
-
-                    Task.WaitAll(tasks.ToArray());
-
-                    Assert.True(tasks.All(t => !t.IsFaulted));
                 }
             }
 
             private static Task ProcessRequest(MemoryHost host, string transport, string connectionToken)
             {
-                return host.Get("http://foo/echo/connect?transport=" + transport + "&connectionToken=" + connectionToken);
+                return host.Get("http://foo/echo/connect?transport=" + transport + "&connectionToken=" + connectionToken, r => { }, isLongRunning: true);
             }
 
             [Fact]
@@ -448,9 +462,10 @@ namespace Microsoft.AspNet.SignalR.Tests
             [InlineData(HostType.Memory, TransportType.LongPolling, MessageBusType.FakeMultiStream)]
             [InlineData(HostType.IISExpress, TransportType.Websockets, MessageBusType.Default)]
             [InlineData(HostType.IISExpress, TransportType.ServerSentEvents, MessageBusType.Default)]
+            [InlineData(HostType.IISExpress, TransportType.LongPolling, MessageBusType.Default)]
             [InlineData(HostType.HttpListener, TransportType.Websockets, MessageBusType.Default)]
             [InlineData(HostType.HttpListener, TransportType.ServerSentEvents, MessageBusType.Default)]
-            // [InlineData(HostType.IISExpress, TransportType.LongPolling)]
+            [InlineData(HostType.HttpListener, TransportType.LongPolling, MessageBusType.Default)]
             public async Task ReconnectFiresAfterHostShutDown(HostType hostType, TransportType transportType, MessageBusType messageBusType)
             {
                 using (var host = CreateHost(hostType, transportType))
